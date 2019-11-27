@@ -1,14 +1,32 @@
 #!/bin/bash
-# Test
+#
+# Bash script to replace a property in a yaml file while keeping all comments
+# Currently its set to replace the 'digest' property in a block for a
+# property passed as parameter within an 'image' property block
+#
+# Parameter (positional):
+#	1 .... input file
+# 2 .... parent property name
+# 3 .... (new) property value - passed as file
+# 4 .... output file (has to be different from input file)
+
+# set -euo pipefail
+IFS=$'\n\t'
+
+level1identifier=image
+level2identifier=$2
+level3identifier=digest
+
+hash=
 
 imgIndent=-1												# > -1 ... in such a block, else out
 tagIndent=-1
 
-> updated-chart/production.values.yaml			#Clear updated file
+> $4																#Clear updated file
 
 while IFS= read -r line; do
 	
-	echo "$line" >> updated-chart/production.values.yaml			#Write to updated file
+	echo "$line" >> $4			#Write to updated file
 
 	line2=${line%%#*}								#Remove comments
 
@@ -29,7 +47,7 @@ while IFS= read -r line; do
 	if [ $imgIndent -eq -1 ] 						#is not in img block
 		then
 
-		if [[ "$line2" =~ ^image: ]] 		#No - then open img block if line starts with "image:"
+		if [[ "$line2" =~ ^"${level1identifier}": ]] 		#No - then open img block if line starts with "image:"
 			then 
 			imgIndent=$ind
 			#echo "******Image On:" "$line2" $imgIndent
@@ -46,26 +64,20 @@ while IFS= read -r line; do
 		if [ $tagIndent -eq -1 ] 						#is not in tag block
 			then
 
-			if [[ $line2 =~ cumbersell: ]] 		#No - then open tag block if line contains starts with tag identifier
+			if [[ $line2 =~ "$2": ]] 		#No - then open tag block if line contains starts with tag identifier
 				then 
 				tagIndent=$ind
-				read -r hash < cumbersell-init-db/digest
+				read -r hash < $3
 				#echo "******Tag On:" "$line2" $tagIndent
 			fi
 
-			if [[ $line2 =~ initDb: ]] 		#No - then open tag block if line contains starts with tag identifier
-				then 
-				tagIndent=$ind
-				read -r hash < cumbersell-init-db/digest
-				#echo "******Tag On:" "$line2" $tagIndent
-			fi
 		else
-			if [[ $line2 =~ digest: ]] 		#look for target line
+			if [[ $line2 =~ ${level3identifier}: ]] 								#look for target line
 				then 
 				#echo "******Target found for:"  $hashFile "$line2"
-				sed -i '$ d' updated-chart/production.values.yaml												#Remove last line in updated file
+				sed -i '$ d' $4																				#Remove last line in updated file
 				lead=$(printf "%*s" $ind "")
-				echo "$lead""digest:" $hash >> updated-chart/production.values.yaml			#and write the updated content
+				echo "$lead""$level3identifier": $hash >> $4					#and write the updated content
 
 			fi
 
@@ -73,6 +85,6 @@ while IFS= read -r line; do
 
 	fi
 
-done < production.values.yaml
+done < $1
 
 echo "Updated file was created successfully."
