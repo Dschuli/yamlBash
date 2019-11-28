@@ -4,16 +4,16 @@ Allows to change the value of a property in a yaml file, without altering struct
 According to the use case the property is at a hierarchy level 3, with level 1 and 3 being hardcoded (currently) and level 2 being
 provided as parameter propertyName:
 
-`image:
+image:
   propertyName:
-    digest:` 
+    digest: 
 
-ymf.sh uses stdIn and stdOut to allow chaining to affect multiple changes. Check out the provided example 
+ymf.sh uses stdIn and stdOut to allow piping to implement multiple changes. Check out the provided example 
 	FloForTenX.sh,
 which implements the original use case. 
 
 
-`Help for ymf.sh:
+Help for ymf.sh:
  Function: Replace value for property image:propertyName:digest in a yaml file while keeping structure and comments.
 
   Required) Parameters are:
@@ -22,4 +22,5 @@ which implements the original use case.
      -f / --file         File with the (new) value of property
                          -v or -f have to be provided. -v takes precedence over -f
 
-     -h / -- help / ?    Help`
+     -h / -- help / ?    Help
+
