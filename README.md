@@ -5,8 +5,8 @@ According to the use case the property is at a hierarchy level 3, with level 1 a
 provided as parameter propertyName:
 
 image:
-	propertyName:
-		digest: 
+  propertyName:
+    digest: 
 
 ymf.sh uses stdIn and stdOut to allow chaining to affect multiple changes. Check out the provided example 
 	FloForTenX.sh,
