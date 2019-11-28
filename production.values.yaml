@@ -6,7 +6,7 @@ image:
     repository: cumbersell
     tag: null
     pullPolicy: IfNotPresent
-    digest: ""
+    digest: ""              #This is a comment
   initDb:
     repository: cumbersell-init-db
     tag: null
