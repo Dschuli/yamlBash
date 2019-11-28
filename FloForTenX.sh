@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-set -euo pipefail						# e option will stop further processing on fails
+set -euo pipefail # e option will stop further processing on fails
 IFS=$'\n\t'
 
 bash ./ymf.sh -i production.values.yaml -p cumbersell -v cumbersell/digest -o temp
