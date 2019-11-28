@@ -1,22 +1,14 @@
 #!/bin/bash
 # *********** Improvement ideas
-# ******* add potential commnet to altered line
-# ******* non file property value option (string)
-# ******* check if/how stdin could replace infile
 # ******* Optional parms for image and digest
-# ******* Property nesting L flexibility - change will always affect the lowest L
+# ******* Property nesting level flexibility - change will always affect the lowest level
 #
 # Bash script to replace a property in a yaml file while keeping all comments
 # Currently its set to replace the 'digest' property in a block for a
 # property passed as parameter within an 'image' property block
 #
-# Parameter (positional):
-#	1 .... input file
-# 2 .... parent property name
-# 3 .... (new) property value - passed as file
-# 4 .... output file (has to be different from input file)
 
-# set -euo pipefail
+set -uo pipefail									# inofficial strict mode -e options fails unexplicably (for me) at line 120
 IFS=$'\n\t'
 
 function msg() {
@@ -27,18 +19,22 @@ function showHelp() {														# Help function
 	msg "Help for ymf.sh:"
 	msg "  Function: Replace value for property $L1identifier:propertyName:$L3identifier in a yaml file while keeping structure and comments."
 	msg
-	msg "  Required Parameters are:"
-	msg "     -i / --input        Input file name"
+	msg "  (Required) Parameters are:"
 	msg "     -p / --property     Name of property to change as above"
-	msg "     -v / --value        Value of above property"
-	msg "      or"
+	msg "     -v / --value        (New) value of property"
+	msg	"     -f / --file         File with the (new) value of property" 
+	msg "                         -v or -f have to be provided. -v takes precedence over -f"
+	msg 
 	msg "     -h / -- help / ?    Help"
 	exit -1
 }
 
 
-L1identifier=image														# non parameter level identifiers
+L1identifier=image														# Defaults
+L2identifier=""
 L3identifier=digest
+propertyValue=""
+propertyFile=""
 
 # ***** Start of parameter processing *****************************************
 
@@ -52,12 +48,6 @@ while [[ $# -gt 0 ]]; do
 
 		case $key in
 
-			-i | --input)
-				inputFile="$2"
-				shift # past argument
-				shift # past value
-			;;
-
 			-p | --property)
 				L2identifier="$2"
 				shift # past argument
@@ -65,6 +55,12 @@ while [[ $# -gt 0 ]]; do
 			;;
 
 			-v | --value)
+				propertyValue="$2"
+				shift # past argument
+				shift # past value
+			;;
+
+			-f | --file)
 				propertyFile="$2"
 				shift # past argument
 				shift # past value
@@ -85,15 +81,20 @@ while [[ $# -gt 0 ]]; do
 
 # ***** End of parameter processing *******************************************
 
-if [ ! -f $inputFile ]; then												#Check that inputfile is valid
-	msg "Input file <$inputFile> not found."
+if [ -z $propertyValue ] && [ -z $propertyFile ]; then
+	msg "You need to provide either a -v or a -f parameter. See -h / --help for more information."
 	exit -1
 fi
 
-if [ ! -f $propertyFile ]; then											#Check that property file is valid
-	echo msg "File with property value <$propertyFile> does not exist."
-	exit -1
-fi	
+if [[ ! -z $propertyValue ]]; then 
+	hash=$propertyValue
+else
+	if [ ! -f $propertyFile ]; then											#Check that property file is valid
+		echo msg "File with property value <$propertyFile> does not exist."
+		exit -1
+	fi
+	read -r hash < $propertyFile
+fi		
 
 L1Indent=-1													# > -1 ... in such a block, else not
 L2Indent=-1
@@ -109,7 +110,7 @@ while IFS= read -r line; do
 		continue
 	fi
 
-	ind=`expr match "$line2" '^\s*'`								    								# Get indent of line
+	ind=$(expr match "$line2" '^\s*')								    								# Get indent of line
 
 	if [ $L1Indent -ge 0 ]  && [ $L1Indent -eq $ind ]; then							# Close L1 block (and all lower L blocks) if indent is at block start
 		L1Indent=-1
@@ -134,7 +135,6 @@ while IFS= read -r line; do
 			echo "$line"
 			if [[ $line2 =~ \s*"${L2identifier}": ]]; then									# Open L2 block if line (trimmed) starts with the indentifier
 				L2Indent=$ind
-				read -r hash < $propertyFile
 			fi
 
 		else
@@ -167,7 +167,7 @@ while IFS= read -r line; do
 
 	fi
 
-done < $inputFile
+done
 
 if [ $chgCount -gt 0 ]; then
 	msg "Output was created successfully."
