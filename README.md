@@ -20,6 +20,6 @@ which implements the original use case.
           -p / --property     Name of property to change as above\
           -v / --value        (New) value of property\
           -f / --file         File with the (new) value of property\
-                         -v or -f have to be provided. -v takes precedence over -f\
+                              -v or -f have to be provided. -v takes precedence over -f\
 
          -h / -- help / ?    Help
