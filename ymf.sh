@@ -17,10 +17,10 @@ function msg() {
 
 function showHelp() {														# Help function
 	msg "Help for ymf.sh:"
-	msg "  Function: Replace value for property $L1identifier:propertyName:$L3identifier in a yaml file while keeping structure and comments."
+	msg "  Function: Replace value for a property identified by the property parameter in a yaml file while keeping structure and comments. Property is currently hardcoded to be at Level 3 (sub-sub-property)"
 	msg
 	msg "  (Required) Parameters are:"
-	msg "     -p / --property     Name of property to change as above"
+	msg "     -p / --property     Name of property to change as above in the format Level1:Level2:Level3"
 	msg "     -v / --value        (New) value of property"
 	msg	"     -f / --file         File with the (new) value of property" 
 	msg "                         -v or -f have to be provided. -v takes precedence over -f"
@@ -29,11 +29,7 @@ function showHelp() {														# Help function
 	exit 0
 }
 
-
-L1identifier=image														# Defaults
-L2identifier=""
-L3identifier=digest
-propertyValue=""
+propertyValue=""														# Defaults
 propertyFile=""
 
 # ***** Start of parameter processing *****************************************
@@ -49,7 +45,7 @@ while [[ $# -gt 0 ]]; do
 		case $key in
 
 			-p | --property)
-				L2identifier="$2"
+				property="$2"
 				shift # past argument
 				shift # past value
 			;;
@@ -81,6 +77,24 @@ while [[ $# -gt 0 ]]; do
 
 # ***** End of parameter processing *******************************************
 
+IFS=':' read -ra propLevels <<< "$property"
+
+if [[ ${#propLevels[@]} -ne 3 ]]; then
+	msg "You need to provide 3 levels as property name.  See -h / --help for more information."
+	exit 100
+fi
+
+for x in "${propLevels[@]}";do
+	if [[ -z  "$x" ]]; then
+		msg "Property levels should not be empty. See -h / --help for more information."
+		exit 100
+	fi
+done
+
+L1identifier="${propLevels[0]}"
+L2identifier="${propLevels[1]}"
+L3identifier="${propLevels[2]}"
+
 if [ -z "$propertyValue" ] && [ -z "$propertyFile" ]; then
 	msg "You need to provide either a -v or a -f parameter. See -h / --help for more information."
 	exit 100
@@ -98,6 +112,7 @@ fi
 
 L1Indent=-1													# > -1 ... in such a block, else not
 L2Indent=-1
+
 regexp="^\s*"												#Regex for leading blanks
 
 chgCount=0
