@@ -8,7 +8,7 @@
 # property passed as parameter within an 'image' property block
 #
 
-set -uo pipefail									# inofficial strict mode -e options fails unexplicably (for me) at line 120
+set -euo pipefail									# inofficial strict mode -e options fails unexplicably (for me) at line 120
 IFS=$'\n\t'
 
 function msg() {
@@ -26,7 +26,7 @@ function showHelp() {														# Help function
 	msg "                         -v or -f have to be provided. -v takes precedence over -f"
 	msg 
 	msg "     -h / -- help / ?    Help"
-	exit -1
+	exit 0
 }
 
 
@@ -81,23 +81,24 @@ while [[ $# -gt 0 ]]; do
 
 # ***** End of parameter processing *******************************************
 
-if [ -z $propertyValue ] && [ -z $propertyFile ]; then
+if [ -z "$propertyValue" ] && [ -z "$propertyFile" ]; then
 	msg "You need to provide either a -v or a -f parameter. See -h / --help for more information."
-	exit -1
+	exit 100
 fi
 
-if [[ ! -z $propertyValue ]]; then 
+if [[ -n $propertyValue ]]; then 
 	hash=$propertyValue
 else
-	if [ ! -f $propertyFile ]; then											#Check that property file is valid
+	if [ ! -f "$propertyFile" ]; then											#Check that property file is valid
 		echo msg "File with property value <$propertyFile> does not exist."
-		exit -1
+		exit 100
 	fi
-	read -r hash < $propertyFile
+	read -r hash < "$propertyFile"
 fi		
 
 L1Indent=-1													# > -1 ... in such a block, else not
 L2Indent=-1
+regexp="^\s*"												#Regex for leading blanks
 
 chgCount=0
 
@@ -109,10 +110,11 @@ while IFS= read -r line; do
 		echo "$line"
 		continue
 	fi
+	
+	[[ "$line2" =~ $regexp ]]									#Get line indent
+	ind=${#BASH_REMATCH}
 
-	ind=$(expr match "$line2" '^\s*')								    								# Get indent of line
-
-	if [ $L1Indent -ge 0 ]  && [ $L1Indent -eq $ind ]; then							# Close L1 block (and all lower L blocks) if indent is at block start
+	if [ $L1Indent -ge 0 ]  && [ $L1Indent -eq "$ind" ]; then				  	# Close L1 block (and all lower L blocks) if indent is at block start
 		L1Indent=-1
 		L2Indent=-1
 	fi
@@ -126,7 +128,7 @@ while IFS= read -r line; do
 
 	else																																# L1 block open
 
-		if [ $L2Indent -ge 0 ]  && [ $L2Indent -eq $ind ] ; then					#	Close L2 block if indent is at block start
+		if [ $L2Indent -ge 0 ]  && [ $L2Indent -eq "$ind" ] ; then					#	Close L2 block if indent is at block start
 			L2Indent=-1
 		fi
 
@@ -155,9 +157,9 @@ while IFS= read -r line; do
 
 				fi
 
-				indent=$(printf "%*s" $ind "")																# Create spaces for indenting 
+				indent=$(printf "%*s" "$ind" "")																# Create spaces for indenting 
 
-				echo "$indent""$L3identifier": $hash													# Write changed line
+				echo "$indent""$L3identifier": "$hash"													# Write changed line
 				chgCount+=1
 			else
 				echo "$line"
