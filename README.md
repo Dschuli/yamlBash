@@ -33,7 +33,7 @@ which implements the original use case.
                 while keeping structure and comments. Currently a nesting level of 3 (and only 3) is supported.
     
       (Required) Parameters are:
-         -k / --key		      Key name to be altered as above in the format Level0:Level1:Level2
+         -k / --key          Key name to be altered as above in the format Level0:Level1:Level2
          -v / --value        (New) value for the key
          -f / --file         File with the (new) value for the key
                              -v or -f have to be provided. -v takes precedence over -f
