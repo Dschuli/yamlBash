@@ -1,4 +1,4 @@
-**ymf.sh**
+**yamlBash.sh**
 
 Bash script to replace a value of a key:value pair in a yaml file while 
 keeping original structure and comments.
@@ -28,7 +28,7 @@ ymf.sh uses stdIn and stdOut to allow piping to implement multiple changes. Chec
 which implements the original use case. 
 
 
-    Help for ymf.sh:
+    Help for yamlBash.sh:
       Function: Replace value for a (nersted) key identified by the key parameter in a yaml file
                 while keeping structure and comments. Currently a nesting level of 3 (and only 3) is supported.
     
