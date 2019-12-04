@@ -32,11 +32,11 @@ function msg() {
 
 function showHelp() {														# Help function
 	msg "Help for ymf.sh:"
-	msg "  Function: Replace value for a (nersted) key identified by the key parameter in a yaml file"
-	msg "            while keeping structure and comments. Currently a nesting level of 3 (and only 3) is supported."
+	msg "  Function: Replace value for a (nested) key identified by the 'key' parameter in a yaml file"
+	msg "            while keeping structure and comments.
 	msg
 	msg "  (Required) Parameters are:"
-	msg "     -k / --key		      Key name to be altered as above in the format Level0:Level1:Level2"
+	msg "     -k / --key		      Key name to be altered as above in the format Level0:Level1:Level2 ...."
 	msg "     -v / --value        (New) value for the key"
 	msg	"     -f / --file         File with the (new) value for the key" 
 	msg "                         -v or -f have to be provided. -v takes precedence over -f"

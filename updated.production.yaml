@@ -6,7 +6,7 @@ image:
     repository: cube
     tag: null
     pullPolicy: IfNotPresent
-    digest: sha256:244f5c7ac850cf1d431f80412068c4b9e1faa053ca8f66e906d8432a467c4bc7 #This is a comment
+    digest: sha256:244f5c7ac850cf1d431f80412068c4b9e1faa053ca8f66e906d8432a467c4bc7 #to be changed every 24h
   initDb:
     repository: init-db
     tag: null
