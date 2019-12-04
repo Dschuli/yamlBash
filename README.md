@@ -10,11 +10,11 @@ Key elements are treated as regex, so can e.g. be specified like "St.*". This wi
 Currently only supports simple mappings/dictionaries, as e.g.
 	
     Key0:
-	    Key1:
-      Key2:	xxxx
-		    Key3:	to be replaced
-		    Key4:
-    Key5:
+      Key1: Null
+      Key2: xxxx
+         Key3: to be replaced
+      Key4: yyyy
+    Key5: zzzz
 
 and allows to e.g. replace/insert a value for Key3. Key parameter would be Key1:Key3.
 Current settings/restrictions:
