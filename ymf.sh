@@ -1,12 +1,27 @@
 #!/bin/bash
-# *********** Improvement ideas
-# ******* Optional parms for image and digest
-# ******* Property nesting level flexibility - change will always affect the lowest level
 #
-# Bash script to replace a property in a yaml file while keeping all comments
-# Currently its set to replace the 'digest' property in a block for a
-# property passed as parameter within an 'image' property block
+# Bash script to replace a value of a key:value pair in a yaml file while 
+# keeping original structure and comments.
 #
+# (Nested) Key elements should separated by ":", e.g. Key0:Key1:Key2.
+# Key elements are treated as regex, so can e.g. be specified like "St.*". This will pick up any
+#	key starting with "St" and might lead to more than one line being altered. 
+#
+# Currently only supports simple mappings/dictionaries, as e.g.
+#	
+# Key0:
+#	Key1:
+#   Key2:	xxxx
+#		Key3:	to be replaced
+#		Key4:
+# Key5:
+#
+# and allows to e.g. replace/insert a value for Key3. Key parameter would be Key1:Key3.
+# Current settings/restrictions:
+# - Other forms of YAML structures and notations (e.g. lists, block or flow style), are not supported.
+# - Value has to be a simple scalar or string  
+# - Inserted values are not put into " or ', therefore no multiline strings
+# - If the target key has sub-keys/nestings, those will not be altered 
 
 set -euo pipefail									# inofficial strict mode -e options fails unexplicably (for me) at line 120
 IFS=$'\n\t'
@@ -17,20 +32,21 @@ function msg() {
 
 function showHelp() {														# Help function
 	msg "Help for ymf.sh:"
-	msg "  Function: Replace value for a property identified by the property parameter in a yaml file while keeping structure and comments. Property is currently hardcoded to be at Level 3 (sub-sub-property)"
+	msg "  Function: Replace value for a (nersted) key identified by the key parameter in a yaml file"
+	msg "            while keeping structure and comments. Currently a nesting level of 3 (and only 3) is supported."
 	msg
 	msg "  (Required) Parameters are:"
-	msg "     -p / --property     Name of property to change as above in the format Level1:Level2:Level3"
-	msg "     -v / --value        (New) value of property"
-	msg	"     -f / --file         File with the (new) value of property" 
+	msg "     -k / --key		      Key name to be altered as above in the format Level0:Level1:Level2"
+	msg "     -v / --value        (New) value for the key"
+	msg	"     -f / --file         File with the (new) value for the key" 
 	msg "                         -v or -f have to be provided. -v takes precedence over -f"
 	msg 
 	msg "     -h / -- help / ?    Help"
 	exit 0
 }
 
-propertyValue=""														# Defaults
-propertyFile=""
+keyValue=""														# Defaults
+keyFile=""
 
 # ***** Start of parameter processing *****************************************
 
@@ -44,20 +60,20 @@ while [[ $# -gt 0 ]]; do
 
 		case $key in
 
-			-p | --property)
-				property="$2"
+			-k | --key)
+				keyName="$2"
 				shift # past argument
 				shift # past value
 			;;
 
 			-v | --value)
-				propertyValue="$2"
+				keyValue="$2"
 				shift # past argument
 				shift # past value
 			;;
 
 			-f | --file)
-				propertyFile="$2"
+				keyFile="$2"
 				shift # past argument
 				shift # past value
 			;;
@@ -67,7 +83,7 @@ while [[ $# -gt 0 ]]; do
 			;;
 
 			*)
-				echo "Invalid option. Use -h / --help / ? for more information." 1>&2
+				echo "Invalid option $key. Use -h / --help / ? for more information." 1>&2
 				exit 0
 			;;
 
@@ -77,117 +93,98 @@ while [[ $# -gt 0 ]]; do
 
 # ***** End of parameter processing *******************************************
 
-IFS=':' read -ra propLevels <<< "$property"
+IFS=':' read -ra keyLevels <<< "$keyName"
 
-if [[ ${#propLevels[@]} -ne 3 ]]; then
-	msg "You need to provide 3 levels as property name.  See -h / --help for more information."
-	exit 100
-fi
-
-for x in "${propLevels[@]}";do
-	if [[ -z  "$x" ]]; then
-		msg "Property levels should not be empty. See -h / --help for more information."
+for x in "${keyLevels[@]}"; do
+  if [ -z "$x" ]; then
+		msg "Parts of the key parameter should not be empty.  See -h / --help for more information."
 		exit 100
 	fi
 done
 
-L1identifier="${propLevels[0]}"
-L2identifier="${propLevels[1]}"
-L3identifier="${propLevels[2]}"
 
-if [ -z "$propertyValue" ] && [ -z "$propertyFile" ]; then
+if [ -z "$keyValue" ] && [ -z "$keyFile" ]; then
 	msg "You need to provide either a -v or a -f parameter. See -h / --help for more information."
 	exit 100
 fi
 
-if [[ -n $propertyValue ]]; then 
-	hash=$propertyValue
+if [[ -n $keyValue ]]; then 
+	hash=$keyValue
 else
-	if [ ! -f "$propertyFile" ]; then											#Check that property file is valid
-		echo msg "File with property value <$propertyFile> does not exist."
+	if [ ! -f "$keyFile" ]; then											#Check that property file is valid
+		echo msg "File with (new) value <$keyFile> does not exist."
 		exit 100
 	fi
-	read -r hash < "$propertyFile"
+	read -r hash < "$keyFile"
 fi		
 
-L1Indent=-1													# > -1 ... in such a block, else not
-L2Indent=-1
+chgCount=0														#Counter/flag of changes made
+level=0 															#Starting level
+levelIndent=()
 
-regexp="^\s*"												#Regex for leading blanks
+regexpLB="^\s*"												#Regex for leading blanks
+lastLevel=$(( ${#keyLevels[@]}-1 ))		#Number of nesting levels in key
 
-chgCount=0
+for i in "${!keyLevels[@]}"; do
+  levelIndent+=(0)
+	active+=(0)
+done
 
-while IFS= read -r line; do
+levelIndent[0]=0
+
+mapfile -t lines 													#Read input into array  										
+
+for i in "${!lines[@]}"; do									#Process array via iterator
+
+	line=${lines[i]}												#Get current line
 	
-	line2=${line%%#*}													# Remove comments
+	line2=${line%%#*}												#Remove comments
 
-	if [[ -z "${line2// }" ]]; then						# Empty/pure comment lines - just echo to stdout
-		echo "$line"
-		continue
-	fi
-	
-	[[ "$line2" =~ $regexp ]]									#Get line indent
+	[[ -z "${line2// }" ]] && continue			#Ignore empty/pure comment lines 
+
+	[[ "$line2" =~ $regexpLB ]]							#Get indent of line
 	ind=${#BASH_REMATCH}
 
-	if [ $L1Indent -ge 0 ]  && [ $L1Indent -eq "$ind" ]; then				  	# Close L1 block (and all lower L blocks) if indent is at block start
-		L1Indent=-1
-		L2Indent=-1
+	if [ $ind -lt ${levelIndent[$level]} ];then					             # Indent is smaller - so decrease level
+		until [ "$level" -le 0 ]; do
+			level=$(( level-1 ))
+			[ $ind -ge ${levelIndent[$level]} ] && break                  # until new level found 
+		done 
 	fi
 
-	if [ $L1Indent -eq -1 ]; then 																			# L1 block not open
-		
-		echo "$line"
-		if [[ "$line2" =~ ^"${L1identifier}": ]]; then		 								# Open L1 block if line starts with the indentifier
-			L1Indent=$ind
-		fi
+identRegex="^\s{"${levelIndent[$level]}}${keyLevels[$level]}":"
 
-	else																																# L1 block open
-
-		if [ $L2Indent -ge 0 ]  && [ $L2Indent -eq "$ind" ] ; then					#	Close L2 block if indent is at block start
-			L2Indent=-1
-		fi
-
-		if [ $L2Indent -eq -1 ]; then 																		# L2 block is not open
-
-			echo "$line"
-			if [[ $line2 =~ \s*"${L2identifier}": ]]; then									# Open L2 block if line (trimmed) starts with the indentifier
-				L2Indent=$ind
-			fi
-
-		else
-
-			if [[ $line2 =~ \s*"${L3identifier}": ]]; then 									# Find line that starts (trimmed) with L3 identifier																		# Line contains a comment
-				
-				if [[ "$line" =~ "#" ]]; then																	# Line contains a comment
-					comment=${line#*#}																					# Get comment
-					before=${line%#*}																						# Get free space before comment in input
-					before=${before#*:}
-					remainder=$((${#before}-${#hash}-1))
-
-					if [ $remainder -le 0 ]; then																# Not enough space to acco0modate new property value
-						hash="$hash #$comment"																		# add comment at end
-					else
-						hash="$hash$(printf "%*s" $remainder " ")#$comment"				# insert comment into free space
-					fi
-
+	if [[ "$line2" =~ $identRegex ]]; then
+		if [ $level -eq $lastLevel ]; then			      									# Found the last key level
+			if [[ "$line" =~ "#" ]]; then																	# Line contains a comment
+				comment=${line#*#}																					# Get comment
+				before=${line%#*}																						# Get free space before comment in input
+				before=${before#*:}
+				remainder=$((${#before}-${#hash}-1))
+				if [ $remainder -le 0 ]; then																# Not enough space to acco0modate new property value
+					hash="$hash #$comment"																		# add comment at end
+				else
+					hash="$hash$(printf "%*s" $remainder " ")#$comment"				# insert comment into free space
 				fi
-
-				indent=$(printf "%*s" "$ind" "")																# Create spaces for indenting 
-
-				echo "$indent""$L3identifier": "$hash"													# Write changed line
-				chgCount+=1
-			else
-				echo "$line"
 			fi
+			key="${line2%%:*}"
+			#indent=$(printf "%*s" "$ind" "")															# Create spaces for indenting 
+			lines[i]="$key: ${hash}"			  				# Change line
+			(( chgCount+=1 ))
 
+			# ?? delete all remaining lines in block?
+
+		else																					# Else increase level
+			[[ $((i+1)) -eq ${#lines[@]} ]] && break			  # Unless its the last line
+			(( level+=1 ))														  # Increase level #
+			[[ "${lines[ (( i+1 )) ]}" =~ $regexpLB ]]	#	Get indent of next line as indent for the new level
+			levelIndent[$level]=${#BASH_REMATCH}
 		fi
-
 	fi
 
 done
 
-if [ $chgCount -gt 0 ]; then
-	msg "Output was created successfully."
-else
-	msg "Output was created, but without any changes from input file."
-fi
+echo "${lines[*]}"
+
+msg "$chgCount line(s) of input was/were changed."
+
