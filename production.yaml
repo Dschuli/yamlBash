@@ -6,7 +6,7 @@ image:
     repository: cube
     tag: null
     pullPolicy: IfNotPresent
-    digest: ""              #This is a comment
+    digest: ""              #to be changed every 24h
   initDb:
     repository: init-db
     tag: null
