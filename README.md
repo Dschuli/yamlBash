@@ -29,7 +29,7 @@ which implements the original use case.
 
 
     Help for yamlBash.sh:
-      Function: Replace value for a (nersted) key identified by the key parameter in a yaml file
+      Function: Replace value for a (nested) key identified by the "key" parameter in a yaml file
                 while keeping structure and comments. Currently a nesting level of 3 (and only 3) is supported.
     
       (Required) Parameters are:
