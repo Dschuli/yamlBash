@@ -29,12 +29,12 @@
 # Todos:
 # - If the provided value has a comment, it will replace any original comment.
 # - When using a file as value parameter, it can contain a structure to be used as value of the key to be altered.
-# 	In this case it can contain multiple lines (including comments), that will get added to the yaml file.
-#   The indention of the lines will be normalized, where the first line indention is normaized to 0. In the target 
+# 	In this case it contains multiple lines (including comments), that will get added to the yaml file.
+#   The indention of the lines will be normalized, where the first line indention is normalized to 0. In the target 
 #   yaml file those lines lines will get indented at the key line level + 1 standard indention (derived from the 
 #   first indention in the target file with a default of 2 spaces). Additional indention will be kept as in the value file.  
 
-set -euo pipefail									# inofficial strict mode -e options fails unexplicably (for me) at line 120
+set -euo pipefail
 IFS=$'\n\t'
 
 traceLevel=0
@@ -121,26 +121,26 @@ for x in "${keyLevels[@]}"; do
 	fi
 done
 
-
 if [ -z "$keyValue" ] && [ -z "$keyFile" ]; then
 	msg "You need to provide either a -v or a -f parameter. See -h / --help for more information."
 	exit 100
 fi
 
 if [[ -n $keyValue ]]; then 
-	hash=$keyValue
+	newValue[0]=$keyValue
 else
 	if [ ! -f "$keyFile" ]; then											#Check that property file is valid
 		echo msg "File with (new) value <$keyFile> does not exist."
 		exit 100
 	fi
-	read -r hash < "$keyFile"
-fi		
+	mapfile -t newValue < <(sed -e :a -e '/^\n*$/{$d;N;};/\n$/ba' $keyFile) #Read file into arry with removed trailing blank lines
+fi	
 
-chgCount=0														#Counter/flag of changes made
+chgCount=0														#Counter of changed lines
 delCount=0														#Counter of deleted lines
 addCount=0														#Counter of added lines
 level=0 															#Starting level
+fileIndentSetting=0										#First non-zero indent will determine standard setting
 levelIndent=()
 
 regexpLB="^\s*"												#Regex for leading blanks
@@ -152,11 +152,15 @@ done
 
 levelIndent+=(0)											#Add one level for a block after a change
 
-mapfile -t lines 													#Read input into array  										
+mapfile -t lines 													#Read input into array
 
 for i in "${!lines[@]}"; do								#Process array via iterator
 
 	line=${lines[i]}												#Get current line
+
+ if [[ "$line" =~ \t ]]; then
+	msg "Warning: line $(( $i+1 )) contains tab characters. YAML files should only use spaces"
+fi
 	
 	line2=${line%%#*}												#Remove comments
 
@@ -187,21 +191,31 @@ fi
 	if [[ "$line2" =~ $identRegex ]]; then
 		trace "Hit at: $level Indent: ${levelIndent[$level]} Line: $line2" 
 		if [ $level -eq $lastLevel ]; then			      									# Found the last key level
-			if [[ "$line" =~ "#" ]]; then																	# Line contains a comment
+
+			if [ ${#newValue[@]} -eq 1 ]; then 
+				val=${newValue[0]}
+			else
+				val=""
+			fi	
+			
+			if [[ "$line" =~ "#" ]] && [[ ! "$val" =~ "#" ]] ; then					# Line contains a comment - new value not
 				comment=${line#*#}																					# Get comment
 				before=${line%#*}																						# Get free space before comment in input
 				before=${before#*:}
-				remainder=$((${#before}-${#hash}-1))
+				remainder=$((${#before}-${#val}-1))
 				if [ $remainder -le 0 ]; then																# Not enough space to acco0modate new property value
-					hash="$hash #$comment"																		# add comment at end
+					val="$val #$comment"																			# add comment at end
 				else
-					hash="$hash$(printf "%*s" $remainder " ")#$comment"				# insert comment into free space
+					val="$val$(printf "%*s" $remainder " ")#$comment"					# insert comment into free space
 				fi
 			fi
 			key="${line2%%:*}"
-			#indent=$(printf "%*s" "$ind" "")															# Create spaces for indenting 
-			echo "$key: ${hash}"																  				# Change line
+			echo "$key: $val"																					  	# write key:value line	
 			(( chgCount+=1 ))
+			#indent=$(printf "%*s" "$ind" "")															# Create spaces for indenting
+			if [ ${#newValue[@]} -gt 1 ]; then 													  # Add block lines
+				msg Block!
+			fi
 
 		else																					
 			echo "$line"
@@ -213,6 +227,9 @@ fi
 		if [ $nextIndent -gt ${levelIndent[$level]} ]; then 						# If indent of next line is gt then current indent
 			(( level+=1 ))																								# Increase level #, level gt then provided indicates that line should get deleted
 			levelIndent[$level]=$nextIndent																# Store indent of the next level
+
+		[ $fileIndentSetting -eq 0 ] && fileIndentSetting=$ind					# Set standard indention on first level increase
+
 			trace Increase level to : $level Indent: ${levelIndent[$level]} Line: "$line2" 
 		fi
 	else
@@ -222,4 +239,3 @@ fi
 
 done
 msg "Done: Count of lines replaced/deleted/added: $chgCount/$delCount/$addCount"
-
