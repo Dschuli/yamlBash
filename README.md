@@ -40,7 +40,7 @@ ymf.sh uses stdIn and stdOut to allow piping / redirection to implement multiple
 
     Help for yamlBash.sh:
       Function: Replace value for a (nested) key identified by the "key" parameter in a yaml file
-                while keeping structure and comments. Currently a nesting level of 3 (and only 3) is supported.
+                while keeping structure and comments.
     
       (Required) Parameters are:
          -k / --key          Key name to be altered as above in the format Level0:Level1:Level2
