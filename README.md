@@ -19,7 +19,7 @@ Currently yamlBash.sh supports only chnages to mappings/dictionaries, as e.g.
 and allows to e.g. replace/insert a value for Key3. Key parameter would be Key0:Key2:Key3.
 
 Current settings/restrictions:
-- If the target key has sub-maps (additional lines with higher indent), those will be replaced by the provided value parameter. deleting/replacing those sub-maps. 
+- If the target key has sub-maps (additional lines with higher indent), those will be replaced by the provided value parameter, deleting/replacing those sub-maps. 
   Only comments on the same line a the key will be retained
 - A key value provided by the -v parameter has to be a simple scalar or string and will get applied without. 
   any transformation, e.g. required apostrophes etc have to be part of the provided value parameter.
