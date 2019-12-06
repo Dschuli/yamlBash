@@ -47,6 +47,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 traceLevel=0
+defaultIndent=2
 
 function msg() {
 	echo "$@" 1>&2
@@ -235,7 +236,8 @@ fi
 			if [ ${#newValue[@]} -gt 1 ]; then 													  # Add block lines
 				[[ ${newValue[0]} =~ $regexpLB ]]														# Get indent of first line - will get removed from every line
 				oldIndent=${#BASH_REMATCH}
-				newIndent=$(printf "%*s" "$(( $ind+$fileIndentSetting ))" "")	# Create spaces for initial indent - current + 1 * standard
+				[ $fileIndentSetting -eq 0 ] && fileIndentSetting=$defaultIndent	# Use default if not yet set
+				newIndent=$(printf "%*s" "$(( $ind+$fileIndentSetting ))" "")			# Create spaces for initial indent - current + 1 * standard
 				vl=0
 				for blockLine in "${newValue[@]}"; do												# Process all lines in newValue
 					(( vl+=1 ))

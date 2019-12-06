@@ -1,13 +1,12 @@
 **yamlBash.sh**
 
-Bash script to replace a value of a key:value pair in a yaml file while 
-keeping original structure and comments.
+Bash script to replace a value of a key:value pair in a yaml file while keeping original structure and comments.
 
 (Nested) Key elements should separated by ":", e.g. Key0:Key1:Key2.
 Key elements are treated as regex, so can e.g. be specified like "St.*". This will pick up any
-	key starting with "St" and might lead to more than one line being altered. 
+key starting with "St" and might lead to more than one line being changed. 
 
-Currently only supports simple mappings/dictionaries, as e.g.
+Currently yamlBash.sh supports only chnages to mappings/dictionaries, as e.g.
 	
     Key0:
       Key1: Null
@@ -17,8 +16,8 @@ Currently only supports simple mappings/dictionaries, as e.g.
     Key5: zzzz
 
 
-and allows to e.g. replace/insert a value for Key3. Key parameter would be Key1:Key2:Key3.
-#
+and allows to e.g. replace/insert a value for Key3. Key parameter would be Key0:Key2:Key3.
+
 Current settings/restrictions:
 - If the target key has sub-maps (additional lines with higher indent), those will be replaced by the provided value parameter. deleting/replacing those sub-maps. 
   Only comments on the same line a the key will be retained
