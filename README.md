@@ -27,26 +27,17 @@ Current settings/restrictions:
 - When using the -f / --file parameter, the following applies:
   - If the file contains a single line (trailing blank lines are ignored), the content of that line 
     will be handeled like a -v parameter.
-	- If the file has more than one line, the content will be treated as sub-mapping and the corresponding lines 
+  - If the file has more than one line, the content will be treated as sub-mapping and the corresponding lines 
     will get inserted as-is (including comments) after the target key, replacing any value/sub-mapping in the 
     original yaml file. Indention of those new lines is adjusted to fit into the original structure as below:
-      Any (starting; line 1) indent in the value file will be removed and replaced by the next level of indent
-      of the target key. This additional indent will be detected in the original file. If nothing can be detected,
-      a default indent (set in the script; usually 2 spaces) will be used.   
+      - Any (starting; line 1) indent in the value file will be removed and replaced by the next level of indent
+        of the target key. This additional indent will be detected in the original file. If nothing can be detected,
+        a default indent (set in the script; usually 2 spaces) will be used.   
 - Other forms of YAML structures and notations (e.g. lists, block or flow style) will not be changed, 
   but left as-is.
 - No support for multi-line strings. 
-Todos:
-- When using a file as value parameter, it can contain a structure to be used as value of the key to be altered.
-	In this case it contains multiple lines (including comments), that will get added to the yaml file.
-  The indention of the lines will be normalized, where the first line indention is normalized to 0. In the target 
-  yaml file those lines lines will get indented at the key line level + 1 standard indention (derived from the 
-  first indention in the target file with a default of 2 spaces). Additional indention will be kept as in the value file.  
 
-ymf.sh uses stdIn and stdOut to allow piping to implement multiple changes. Check out the provided example 
-	FloForTenX.sh,
-which implements the original use case. 
-
+ymf.sh uses stdIn and stdOut to allow piping / redirection to implement multiple changes to a yaml file. Check out the provided example script.
 
     Help for yamlBash.sh:
       Function: Replace value for a (nested) key identified by the "key" parameter in a yaml file
