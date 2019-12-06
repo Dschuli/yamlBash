@@ -16,12 +16,32 @@ Currently only supports simple mappings/dictionaries, as e.g.
       Key4: yyyy
     Key5: zzzz
 
-and allows to e.g. replace/insert a value for Key3. Key parameter would be Key1:Key3.
+
+and allows to e.g. replace/insert a value for Key3. Key parameter would be Key1:Key2:Key3.
+#
 Current settings/restrictions:
-- Other forms of YAML structures and notations (e.g. lists, block or flow style), are not supported.
-- Value has to be a simple scalar or string
-- Inserted values are not put into " or ', therefore no multiline strings
-- If the target key has sub-keys/nestings, those will not be altered 
+- If the target key has sub-maps (additional lines with higher indent), those will be replaced by the provided value parameter. deleting/replacing those sub-maps. 
+  Only comments on the same line a the key will be retained
+- A key value provided by the -v parameter has to be a simple scalar or string and will get applied without. 
+  any transformation, e.g. required apostrophes etc have to be part of the provided value parameter.
+- When using the -f / --file parameter, the following applies:
+  - If the file contains a single line (trailing blank lines are ignored), the content of that line 
+    will be handeled like a -v parameter.
+	- If the file has more than one line, the content will be treated as sub-mapping and the corresponding lines 
+    will get inserted as-is (including comments) after the target key, replacing any value/sub-mapping in the 
+    original yaml file. Indention of those new lines is adjusted to fit into the original structure as below:
+      Any (starting; line 1) indent in the value file will be removed and replaced by the next level of indent
+      of the target key. This additional indent will be detected in the original file. If nothing can be detected,
+      a default indent (set in the script; usually 2 spaces) will be used.   
+- Other forms of YAML structures and notations (e.g. lists, block or flow style) will not be changed, 
+  but left as-is.
+- No support for multi-line strings. 
+Todos:
+- When using a file as value parameter, it can contain a structure to be used as value of the key to be altered.
+	In this case it contains multiple lines (including comments), that will get added to the yaml file.
+  The indention of the lines will be normalized, where the first line indention is normalized to 0. In the target 
+  yaml file those lines lines will get indented at the key line level + 1 standard indention (derived from the 
+  first indention in the target file with a default of 2 spaces). Additional indention will be kept as in the value file.  
 
 ymf.sh uses stdIn and stdOut to allow piping to implement multiple changes. Check out the provided example 
 	FloForTenX.sh,
@@ -37,6 +57,7 @@ which implements the original use case.
          -v / --value        (New) value for the key
          -f / --file         File with the (new) value for the key
                              -v or -f have to be provided. -v takes precedence over -f
-    
-         -h / -- help / ?    Help
+        Optional:
+        -c / --check         File(s) will be checked against the use of tab characters (YAML uses spaces) "
+        -h / --help / ?      Help
 
