@@ -3,3 +3,5 @@
 temp
 test.sh
 newValue
+.idea/
+*.iml

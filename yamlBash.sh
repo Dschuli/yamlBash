@@ -152,7 +152,7 @@ else
 		echo msg "File with (new) value <$keyFile> does not exist."
 		exit 100
 	fi
-	mapfile -t newValue < <(sed -e :a -e '/^\n*$/{$d;N;};/\n$/ba' $keyFile) #Read file into arry with removed trailing blank lines
+	mapfile -t newValue < <(sed -e :a -e '/^\n*$/{$d;N;};/\n$/ba' "$keyFile") #Read file into arry with removed trailing blank lines
 fi	
 
 chgCount=0														#Counter of changed lines
@@ -178,7 +178,7 @@ for i in "${!lines[@]}"; do								#Process array via iterator
 	line=${lines[i]}												#Get current line
 
 if [[ "$line" =~ \t ]] && [[ $checkTabs -gt 0 ]]; then
-	msg "Warning: line $(( $i+1 )) of the input contains tab characters. YAML files should only use spaces"
+	msg "Warning: line (( $i+1 )) of the input contains tab characters. YAML files should only use spaces"
 fi
 	
 	line2=${line%%#*}												#Remove comments
@@ -191,6 +191,7 @@ fi
 	[[ "$line2" =~ $regexpLB ]]							#Get indent of line
 	ind=${#BASH_REMATCH}
 
+	# shellcheck disable=SC2086
 	if [ $ind -lt ${levelIndent[$level]} ];then					              # Indent is smaller - so decrease level
 		until [ "$level" -le 0 ]; do
 			level=$(( level-1 ))
@@ -200,7 +201,7 @@ fi
 	fi
 
 if  [ $level -gt $lastLevel ]; then																	# if level is beyond last level - delete the line		
-	trace Delete line: $level Indent: ${levelIndent[$level]} Line: "$line2"
+	trace Delete line: $level Indent: "${levelIndent[$level]}" Line: "$line2"
 	(( delCount+=1 ))
 	continue															
 fi 	 
@@ -237,7 +238,7 @@ fi
 				[[ ${newValue[0]} =~ $regexpLB ]]														# Get indent of first line - will get removed from every line
 				oldIndent=${#BASH_REMATCH}
 				[ $fileIndentSetting -eq 0 ] && fileIndentSetting=$defaultIndent	# Use default if not yet set
-				newIndent=$(printf "%*s" "$(( $ind+$fileIndentSetting ))" "")			# Create spaces for initial indent - current + 1 * standard
+				newIndent=$(printf "%*s" "$(( ind+fileIndentSetting ))" "")			# Create spaces for initial indent - current + 1 * standard
 				vl=0
 				for blockLine in "${newValue[@]}"; do												# Process all lines in newValue
 					(( vl+=1 ))
@@ -257,8 +258,10 @@ fi
 		[[ $((i+1)) -eq ${#lines[@]} ]] && break	  										# Unless its the last line
 		[[ "${lines[ (( i+1 )) ]}" =~ $regexpLB ]]											#	Get indent of next line
 		nextIndent=${#BASH_REMATCH}
+		# shellcheck disable=SC2086
 		trace Check level: $level Level indent: ${levelIndent[$level]} nextIndent: $nextIndent nextLine: "${lines[ (( i+1 )) ]}"
 		
+		# shellcheck disable=SC2086
 		if [ $nextIndent -gt ${levelIndent[$level]} ]; then 						# If indent of next line is gt then current indent
 			(( level+=1 ))																								# Increase level #, level gt then provided indicates that line should get deleted
 			levelIndent[$level]=$nextIndent																# Store indent of the next level
@@ -268,7 +271,8 @@ fi
 
 	else
 		echo "$line"
-		trace Just copy: $level Indent: ${levelIndent[$level]} Line: "$line2" 
+		# shellcheck disable=SC2086
+		trace Just copy: $level Indent: ${levelIndent[$level]} Line: "$line2"
 	fi
 
 done
