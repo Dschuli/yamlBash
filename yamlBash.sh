@@ -16,18 +16,27 @@
 #		Key4:
 # Key5:
 #
-# and allows to e.g. replace/insert a value for Key3. Key parameter would be Key1:Key3.
+# and allows to e.g. replace/insert a value for Key3. Key parameter would be Key1:Key2:Key3.
+#
 # Current settings/restrictions:
-# - Other forms of YAML structures and notations (e.g. lists, block or flow style) will not be changed, 
-#   but left as-is.
-# - Value has to be a simple scalar or string  
-# - Inserted values are not put into " or ', therefore no multiline strings. Any apostrophes in the value parameter
-#   will be applied as-is.
-# - If the target key has sub-keys/nestings (additional lines with higher indent), those will be replaced
+# - If the target key has sub-keys/maps (additional lines with higher indent), those will be replaced
 #   by the provided value parameter, leading to lines that will get deleted. 
 #   Only comments on the same line a the key will be retained
+# - A key value provided by the -v parameter has to be a simple scalar or string and will get applied without. 
+#   any transformation, e.g. required apostrophes etc have to be part of the provided value parameter.
+# - When using the -f / --file parameter, the following applies:
+#   - If the file contains a single line (trailing blank lines are ignored), the content of that line 
+#     will be handeled like a -v parameter.
+# 	- If the file has more than one line, the content will be treated as sub-mapping and the corresponding lines 
+#     will get inserted as-is (including comments) after the target key, replacing any value/sub-mapping in the 
+#     original yaml file. Indention of those new lines is adjusted to fit into the original structure as below:
+#       Any (starting; line 1) indent in the value file will be removed and replaced by the next level of indent
+#       of the target key. This additional indent will be detected in the original file. If nothing can be detected,
+#       a default indent (set in the script; usually 2 spaces) will be used.   
+# - Other forms of YAML structures and notations (e.g. lists, block or flow style) will not be changed, 
+#   but left as-is.
+# - No support for multi-line strings. 
 # Todos:
-# - If the provided value has a comment, it will replace any original comment.
 # - When using a file as value parameter, it can contain a structure to be used as value of the key to be altered.
 # 	In this case it contains multiple lines (including comments), that will get added to the yaml file.
 #   The indention of the lines will be normalized, where the first line indention is normalized to 0. In the target 
@@ -38,6 +47,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 traceLevel=0
+defaultIndent=2
 
 function msg() {
 	echo "$@" 1>&2
@@ -59,13 +69,15 @@ function showHelp() {														# Help function
 	msg "     -v / --value        (New) value for the key"
 	msg	"     -f / --file         File with the (new) value for the key" 
 	msg "                         -v or -f have to be provided. -v takes precedence over -f"
-	msg 
-	msg "     -h / -- help / ?    Help"
+	msg "   Optional:"
+	msg "     -c / --check        File(s) will be checked against the use of tab characters (YAML uses spaces) "
+	msg "     -h / --help / ?     Help"      
 	exit 0
 }
 
 keyValue=""														# Defaults
 keyFile=""
+checkTabs=0
 
 # ***** Start of parameter processing *****************************************
 
@@ -97,7 +109,14 @@ while [[ $# -gt 0 ]]; do
 				shift # past value
 			;;
 
+			-c | --check)
+				checkTabs=1
+				shift # past argument
+			;;
+
+
 			-h | --help | ?)
+				shift # past argument
 				showHelp	
 			;;
 
@@ -158,8 +177,8 @@ for i in "${!lines[@]}"; do								#Process array via iterator
 
 	line=${lines[i]}												#Get current line
 
- if [[ "$line" =~ \t ]]; then
-	msg "Warning: line $(( $i+1 )) contains tab characters. YAML files should only use spaces"
+if [[ "$line" =~ \t ]] && [[ $checkTabs -gt 0 ]]; then
+	msg "Warning: line $(( $i+1 )) of the input contains tab characters. YAML files should only use spaces"
 fi
 	
 	line2=${line%%#*}												#Remove comments
@@ -192,46 +211,61 @@ fi
 		trace "Hit at: $level Indent: ${levelIndent[$level]} Line: $line2" 
 		if [ $level -eq $lastLevel ]; then			      									# Found the last key level
 
-			if [ ${#newValue[@]} -eq 1 ]; then 
-				val=${newValue[0]}
-			else
+			if [ ${#newValue[@]} -gt 1 ]; then 														# A block will get inserted - so key has to stand alone
 				val=""
+			else
+				val=${newValue[0]}
 			fi	
 			
-			if [[ "$line" =~ "#" ]] && [[ ! "$val" =~ "#" ]] ; then					# Line contains a comment - new value not
+			if [[ "$line" =~ "#" ]] && [[ ! "$val" =~ "#" ]] ; then				# Line contains a comment - new value does not
 				comment=${line#*#}																					# Get comment
 				before=${line%#*}																						# Get free space before comment in input
 				before=${before#*:}
 				remainder=$((${#before}-${#val}-1))
-				if [ $remainder -le 0 ]; then																# Not enough space to acco0modate new property value
-					val="$val #$comment"																			# add comment at end
+				if [ $remainder -le 0 ]; then																# Not enough space to accomodate new value
+					val="$val #$comment"																			# add comment directly after value
 				else
 					val="$val$(printf "%*s" $remainder " ")#$comment"					# insert comment into free space
 				fi
 			fi
+
 			key="${line2%%:*}"
 			echo "$key: $val"																					  	# write key:value line	
-			(( chgCount+=1 ))
-			#indent=$(printf "%*s" "$ind" "")															# Create spaces for indenting
+			(( chgCount+=1 ))																							# increase change counter
+
 			if [ ${#newValue[@]} -gt 1 ]; then 													  # Add block lines
-				msg Block!
+				[[ ${newValue[0]} =~ $regexpLB ]]														# Get indent of first line - will get removed from every line
+				oldIndent=${#BASH_REMATCH}
+				[ $fileIndentSetting -eq 0 ] && fileIndentSetting=$defaultIndent	# Use default if not yet set
+				newIndent=$(printf "%*s" "$(( $ind+$fileIndentSetting ))" "")			# Create spaces for initial indent - current + 1 * standard
+				vl=0
+				for blockLine in "${newValue[@]}"; do												# Process all lines in newValue
+					(( vl+=1 ))
+					if [[ "$blockLine" =~ \t ]] && [[ $checkTabs -gt 0 ]]; then		# Check for tabs
+						msg "Warning: Value file contains tab characters (Line $vl). YAML files should only use spaces"
+					fi
+					echo "$newIndent${blockLine:oldIndent}"										# Write blockline
+					(( addCount+=1 ))
+				done
 			fi
 
 		else																					
 			echo "$line"
 		fi
+		
+		# Handle level increase for each hit  
 		[[ $((i+1)) -eq ${#lines[@]} ]] && break	  										# Unless its the last line
 		[[ "${lines[ (( i+1 )) ]}" =~ $regexpLB ]]											#	Get indent of next line
 		nextIndent=${#BASH_REMATCH}
 		trace Check level: $level Level indent: ${levelIndent[$level]} nextIndent: $nextIndent nextLine: "${lines[ (( i+1 )) ]}"
+		
 		if [ $nextIndent -gt ${levelIndent[$level]} ]; then 						# If indent of next line is gt then current indent
 			(( level+=1 ))																								# Increase level #, level gt then provided indicates that line should get deleted
 			levelIndent[$level]=$nextIndent																# Store indent of the next level
-
-		[ $fileIndentSetting -eq 0 ] && fileIndentSetting=$ind					# Set standard indention on first level increase
-
+			[ $fileIndentSetting -eq 0 ] && fileIndentSetting=$ind		  	# Set file standard level indent on first level increase
 			trace Increase level to : $level Indent: ${levelIndent[$level]} Line: "$line2" 
 		fi
+
 	else
 		echo "$line"
 		trace Just copy: $level Indent: ${levelIndent[$level]} Line: "$line2" 
