@@ -8,7 +8,7 @@
 #	key starting with "St" and might lead to more than one line being altered. 
 #
 # Currently only supports simple mappings/dictionaries, as e.g.
-#	
+#
 # Key0:
 #	Key1:
 #   Key2:	xxxx
@@ -92,7 +92,7 @@ while [[ $# -gt 0 ]]; do
 		case $key in
 
 			-k | --key)
-				keyName="$2"
+				keyName=${2%:}                 # Ignore a trailing colon
 				shift # past argument
 				shift # past value
 			;;
