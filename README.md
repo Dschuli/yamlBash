@@ -2,11 +2,11 @@
 
 Bash script to replace a value of a key:value pair in a yaml file while keeping original structure and comments.
 
-(Nested) Key elements should separated by ":", e.g. Key0:Key1:Key2.
+(Nested) Key elements should be separated by ":", e.g. Key0:Key1:Key2.
 Key elements are treated as regex, so can e.g. be specified like "St.*". This will pick up any
 key starting with "St" and might lead to more than one line being changed. 
 
-Currently yamlBash.sh supports only chnages to mappings/dictionaries, as e.g.
+Currently yamlBash.sh supports only changes to mappings/dictionaries, as e.g.
 	
     Key0:
       Key1: Null
