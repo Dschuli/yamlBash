@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Bash script to replace a value of a key:value pair in a yaml file while 
 # keeping original structure and comments.
