@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 #
+# Version 0.1.2         11.12.2019    Base Version
+#
 # Bash script to replace a value of a key:value pair in a yaml file while 
 # keeping original structure and comments.
 #
@@ -48,6 +50,7 @@ IFS=$'\n\t'
 
 traceLevel=0
 defaultIndent=2
+version="Version 0.1.2"
 
 function msg() {
 	echo "$@" 1>&2
@@ -71,6 +74,7 @@ function showHelp() {														# Help function
 	msg "                         -v or -f have to be provided. -v takes precedence over -f"
 	msg "   Optional:"
 	msg "     -c / --check        File(s) will be checked against the use of tab characters (YAML uses spaces) "
+	msg "     -w / --version      Version"
 	msg "     -h / --help / ?     Help"      
 	exit 0
 }
@@ -114,10 +118,13 @@ while [[ $# -gt 0 ]]; do
 				shift # past argument
 			;;
 
-
 			-h | --help | ?)
-				shift # past argument
 				showHelp	
+			;;
+
+			-w| --version)
+			  msg "$version"
+			  exit
 			;;
 
 			*)
